@@ -122,6 +122,15 @@ sheyh@host:~/peervpn_ansible$ tree
 - name: Install peervpn
   apt: name=peervpn state=latest force=yes
 ```
+Проверка на целевом хосте.
+```yaml
+root@ubuntu-bionic:/home/vagrant# which peervpn
+/usr/local/bin/peervpn
+root@ubuntu-bionic:/home/vagrant# peervpn
+PeerVPN v0.044
+(c)2016 Tobias Volk <mail@tobiasvolk.de>
 
+usage: peervpn <configfile>
+```
 
 
