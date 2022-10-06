@@ -1,0 +1,79 @@
+---
+
+- name: Bin Compilation form source
+  block:
+    - name: Update repository
+      command: apt-get update --allow-insecure-repositories
+      #apt: update_cache=yes dpkg_options='force-confold,force-confdef' force=yes
+
+    - name: Install base packages for compiling and making repo
+      apt: 
+        name:
+          - make
+          - gcc
+          - libssl1.0-dev
+          - libz-dev
+          - apache2
+          - dpkg-dev
+        state: latest
+
+    - name: Clone a peervpn src
+      git: repo=https://github.com/peervpn/peervpn.git dest=/tmp/peervpn
+
+    - name: Make peervpn bin
+      command: chdir=/tmp/peervpn/ make
+  tags: compile
+
+- name: Deb package creation
+  block:
+    - name: Create directory for deb packages
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0775
+      loop:
+        - /tmp/deb
+        - /tmp/deb/usr/local/bin
+        - /tmp/deb/DEBIAN
+        - /tmp/install
+      tags: dir
+
+    - name: Put control file
+      copy: src=control dest=/tmp/deb/DEBIAN mode=0775
+
+    - name: Copy bin to deb dir
+      copy: remote_src=yes src=/tmp/peervpn/peervpn dest=/tmp/deb/usr/local/bin mode=0775
+
+    - name: Build Debian package.
+      command: dpkg-deb --build /tmp/deb /tmp/install
+  tags: build
+
+- name: Making local repo with deb packages
+  block:
+    - name: Create directory for repo
+      file:
+        path: /var/www/html/debs/amd64
+        state: directory
+        mode: 0775
+
+    - name: Copy debs to repo
+      copy: remote_src=yes src=/tmp/install/ dest=/var/www/html/debs/amd64 mode=0775
+
+    - name: Scan debs and create packages
+      shell: 
+        chdir: /var/www/html/debs/ 
+        cmd: dpkg-scanpackages amd64 | gzip -9c > amd64/Packages.gz
+
+    - name: Add repo to source list
+      lineinfile:
+        path: /etc/apt/sources.list
+        line: "deb http://localhost/debs/ amd64/"
+        state: present
+
+    - name: apt update
+      command: apt-get update --allow-insecure-repositories
+  tags: mkrepo
+
+- name: Install peervpn
+  apt: name=peervpn state=latest force=yes
+  tags: installvpn

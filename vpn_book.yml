@@ -1,0 +1,9 @@
+---
+- name: setup vpn server
+  hosts: vpn_servers
+  become: True
+  gather_facts: False
+
+
+  roles:
+    - { role: vpn }
